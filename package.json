@@ -1,0 +1,19 @@
+
+{
+    "name": "weather-app",
+    "version": "1.0.0",
+    "description": "A real-time weather application using HTML, CSS and JavaScript Fetch API",
+    "main": "index.html",
+    "scripts": {
+        "start": "npx serve ."
+    },
+    "keywords": [
+        "weather",
+        "fetch-api",
+        "javascript",
+        "html",
+        "css"
+    ],
+    "author": "Kirti Chauhan",
+    "license": "ISC"
+}
