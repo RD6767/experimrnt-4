@@ -1,48 +1,87 @@
 
-const apiKey = "YOUR_API_KEY";
+const form = document.getElementById("weather-form");
 
-async function getWeather() {
-    const city = document.getElementById("cityInput").value;
-    const result = document.getElementById("weatherResult");
+form.addEventListener("submit", async function (event) {
+    event.preventDefault();
 
-    if (city === "") {
-        result.innerHTML = "<p>Please enter a city name.</p>";
-        return;
-    }
+    const city = document.getElementById("city").value.trim();
+    const message = document.getElementById("message");
+    const result = document.getElementById("weather-result");
 
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`;
+    message.textContent = "Loading weather...";
+    result.hidden = true;
 
     try {
-        result.innerHTML = "<p>Loading weather data...</p>";
+        // Step 1: Get city coordinates
+        const geoURL =
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
 
-        const response = await fetch(url);
+        const geoResponse = await fetch(geoURL);
 
-        if (!response.ok) {
-            throw new Error("City not found!");
+        if (!geoResponse.ok) {
+            throw new Error("Unable to search for the city.");
         }
 
-        const data = await response.json();
+        const geoData = await geoResponse.json();
 
-        const temperature = data.main.temp;
-        const humidity = data.main.humidity;
-        const windSpeed = data.wind.speed;
-        const description = data.weather[0].description;
-        const icon = data.weather[0].icon;
+        if (!geoData.results || geoData.results.length === 0) {
+            throw new Error("City not found. Try another name.");
+        }
 
-        result.innerHTML = `
-            <h2>${data.name}, ${data.sys.country}</h2>
+        const location = geoData.results[0];
+        const latitude = location.latitude;
+        const longitude = location.longitude;
 
-            <img src="https://openweathermap.org/img/wn/${icon}@2x.png"
-                 alt="${description}">
+        // Step 2: Fetch current weather
+        const weatherURL =
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto`;
 
-            <h3>${temperature}°C</h3>
+        const weatherResponse = await fetch(weatherURL);
 
-            <p><b>Weather:</b> ${description}</p>
-            <p><b>Humidity:</b> ${humidity}%</p>
-            <p><b>Wind Speed:</b> ${windSpeed} m/s</p>
-        `;
+        if (!weatherResponse.ok) {
+            throw new Error("Unable to fetch weather data.");
+        }
+
+        const weatherData = await weatherResponse.json();
+        const weather = weatherData.current;
+
+        // Step 3: Convert weather code into a description
+        const conditions = {
+            0: "Clear sky ☀️",
+            1: "Mainly clear 🌤️",
+            2: "Partly cloudy ⛅",
+            3: "Overcast ☁️",
+            45: "Foggy 🌫️",
+            48: "Foggy 🌫️",
+            51: "Light drizzle 🌦️",
+            61: "Rain 🌧️",
+            63: "Moderate rain 🌧️",
+            65: "Heavy rain 🌧️",
+            71: "Snowfall ❄️",
+            80: "Rain showers 🌦️",
+            95: "Thunderstorm ⛈️"
+        };
+
+        // Step 4: Display the results
+        document.getElementById("city-name").textContent =
+            `${location.name}, ${location.country}`;
+
+        document.getElementById("temperature").textContent =
+            `${weather.temperature_2m} °C`;
+
+        document.getElementById("condition").textContent =
+            conditions[weather.weather_code] || "Weather information available";
+
+        document.getElementById("humidity").textContent =
+            `Humidity: ${weather.relative_humidity_2m}%`;
+
+        document.getElementById("wind").textContent =
+            `Wind speed: ${weather.wind_speed_10m} km/h`;
+
+        result.hidden = false;
+        message.textContent = "";
 
     } catch (error) {
-        result.innerHTML = `<p>${error.message}</p>`;
+        message.textContent = error.message;
     }
-}
+});
